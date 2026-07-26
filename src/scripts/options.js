@@ -1,26 +1,42 @@
-// Installs a list of {name, id, updateUrl, version} entries by resolving each
-// update manifest and handing the resulting crx url to promptInstall.
-function install_extension_list(extList) {
-    if (!extList.length) return;
-    checkForUpdates(
-        function (
-            updateCheck,
-            installed_versions,
-            appid,
-            updatever,
-            is_webstore
-        ) {
-            let crx_url = updateCheck["@codebase"];
-            promptInstall(crx_url, is_webstore);
-        },
-        null,
-        null,
-        extList
+// Installs the given extensions and nothing else. Each entry is resolved on its
+// own so an install never triggers updates for unrelated installed extensions.
+function install_extension_list(extList, status_node) {
+    let set_status = (msg) => {
+        if (status_node) status_node.textContent = msg;
+    };
+    if (!extList.length) {
+        set_status("");
+        return;
+    }
+    set_status(
+        chrome.i18n.getMessage("options_curatedInstalling", "" + extList.length)
     );
+    let failed = [];
+    Promise.allSettled(
+        extList.map((ext) =>
+            resolveExtensionCrx(ext).then(
+                (info) => promptInstall(info.crx_url, info.is_webstore),
+                (err) => {
+                    console.error(`Cannot install [${ext.id}]:`, err);
+                    failed.push(ext.name);
+                }
+            )
+        )
+    ).then(() => {
+        set_status(
+            failed.length
+                ? chrome.i18n.getMessage(
+                      "options_curatedInstallFailed",
+                      failed.join(", ")
+                  )
+                : ""
+        );
+    });
 }
 
 function load_curated_extensions(installed_extensions) {
     var listdiv = document.getElementById("curated_extensions");
+    var status_node = document.getElementById("curated_status");
     var checkboxes = new Map();
     CURATED_EXTENSIONS.forEach(function (ext) {
         let is_installed = installed_extensions.includes(ext.id);
@@ -30,12 +46,16 @@ function load_curated_extensions(installed_extensions) {
         let span = document.createElement("span");
         input.setAttribute("type", "checkbox");
         input.setAttribute("id", "curated_" + ext.id);
-        if (is_installed) {
+        if (is_installed || ext.unavailable) {
             input.disabled = true;
             label.classList.add("disabled");
             label.setAttribute(
                 "title",
-                chrome.i18n.getMessage("options_curatedInstalledTooltip")
+                chrome.i18n.getMessage(
+                    is_installed
+                        ? "options_curatedInstalledTooltip"
+                        : "options_curatedUnavailableTooltip"
+                )
             );
         } else {
             checkboxes.set(input, ext);
@@ -59,12 +79,48 @@ function load_curated_extensions(installed_extensions) {
         install_extension_list(
             Array.from(checkboxes)
                 .filter(([input, _]) => input.checked)
-                .map(([_, ext]) => to_ext_entry(ext))
+                .map(([_, ext]) => to_ext_entry(ext)),
+            status_node
         );
     };
     document.getElementById("curated_install_all_button").onclick = () => {
         install_extension_list(
-            Array.from(checkboxes.values()).map(to_ext_entry)
+            Array.from(checkboxes.values()).map(to_ext_entry),
+            status_node
+        );
+    };
+}
+
+function load_manual_update_check() {
+    var button = document.getElementById("check_updates_button");
+    var status_node = document.getElementById("check_updates_status");
+    button.onclick = () => {
+        button.disabled = true;
+        status_node.textContent = chrome.i18n.getMessage(
+            "popup_checkingForUpdates"
+        );
+        let found = 0;
+        checkForUpdates(
+            function (
+                updateCheck,
+                installed_versions,
+                appid,
+                updatever,
+                is_webstore
+            ) {
+                found++;
+                promptInstall(updateCheck["@codebase"], is_webstore);
+            },
+            null,
+            function () {
+                button.disabled = false;
+                status_node.textContent = found
+                    ? chrome.i18n.getMessage(
+                          "options_updatesFound",
+                          "" + found
+                      )
+                    : chrome.i18n.getMessage("popup_allUpToDate");
+            }
         );
     };
 }
@@ -76,6 +132,7 @@ function load_options() {
         // curated list needs every installed id, not just auto-updating ones
         installed_extensions = all_extensions.map((ex) => ex.id);
         load_curated_extensions(installed_extensions);
+        load_manual_update_check();
         let e = all_extensions.filter((ex) => ex.updateUrl);
         e.forEach(function (ex) {
             label = document.createElement("label");

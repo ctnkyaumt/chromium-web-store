@@ -82,6 +82,41 @@
         "message": "Already installed",
         "description": "Shown when hovering an extension that is already installed."
     },
+    "options_curatedUnavailableTooltip": {
+        "message": "No working download source, cannot be installed",
+        "description": "Shown when hovering an extension whose update source serves no crx."
+    },
+    "options_curatedInstalling": {
+        "message": "Installing $count$...",
+        "description": "count is the number of extensions being installed.",
+        "placeholders": {
+            "count": {
+                "content": "$1"
+            }
+        }
+    },
+    "options_curatedInstallFailed": {
+        "message": "Could not install: $names$",
+        "description": "names is a comma separated list of extension names.",
+        "placeholders": {
+            "names": {
+                "content": "$1"
+            }
+        }
+    },
+    "options_checkNowButton": {
+        "message": "Check for updates",
+        "description": "Runs an update check for every installed extension."
+    },
+    "options_updatesFound": {
+        "message": "$count$ update(s) available",
+        "description": "count is the number of extensions with an update.",
+        "placeholders": {
+            "count": {
+                "content": "$1"
+            }
+        }
+    },
     "options_advanced": {
         "message": "Advanced",
         "description": ""

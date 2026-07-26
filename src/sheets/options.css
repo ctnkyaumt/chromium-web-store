@@ -69,6 +69,15 @@ textarea {
     margin-right: 0.4rem;
 }
 
+#manual_update {
+    margin: 0.6rem 0 0 1rem;
+}
+
+.status {
+    margin-left: 0.5rem;
+    color: grey;
+}
+
 @media (prefers-color-scheme: dark) {
 body,textarea {
     background-color: #313131;

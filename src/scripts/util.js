@@ -24,11 +24,14 @@ const CURATED_EXTENSIONS = [
         id: "gbefmodhlophhakmoecijeppjblibmie",
     },
     {
-        // Official CWS listing. The self-hosted/XPI repack (id
+        // No installable source exists. The XPI repack (id
         // jcmpbfcjbijkcleamheapcibgjmihakj) ships a placeholder update_url of
-        // https://example.com/updates.xml and can never auto-update.
+        // https://example.com/updates.xml, and this CWS listing is unpublished:
+        // the update check answers `noupdate` with no codebase, so the store
+        // will not serve a crx for it.
         name: "Sahibinden Fiyat Geçmişi",
         id: "eilpnlhignocnlfognmnogdjdcpnolbd",
+        unavailable: true,
     },
     { name: "Violentmonkey", id: "jinjaccalgkegednnccohejagnlnfdag" },
     { name: "Recent Bookmarks List", id: "koppchkdjdakjkdmofpeoccdkkoojanc" },
@@ -181,6 +184,48 @@ function promptInstall(
             return;
         }
     });
+}
+
+// Resolves the download url for one extension. Unlike checkForUpdates this
+// queries only the extension it is given, so installing from a list never
+// pulls in updates for unrelated installed extensions.
+function resolveExtensionCrx(ext) {
+    let queryUrl = ext.updateUrl || googleUpdateUrl;
+    let is_webstore = false;
+    for (const [re, updaterOptions] of store_extensions) {
+        if (re.test(queryUrl)) {
+            is_webstore = true;
+            // built locally so the shared store_extensions entries stay clean
+            queryUrl =
+                updaterOptions.baseUrl +
+                chromeVersion +
+                "&x=id%3D" +
+                ext.id +
+                "%26uc";
+            break;
+        }
+    }
+    return fetch(queryUrl)
+        .then((r) => {
+            if (r.status != 200) throw new Error("HTTP " + r.status);
+            return r.text();
+        })
+        .then((txt) => {
+            let apps = fromXML(txt)?.gupdate?.app;
+            if (!apps) throw new Error("malformed update manifest");
+            if (!Array.isArray(apps)) apps = [apps];
+            let app = apps.find((a) => a["@appid"] == ext.id);
+            let crx_url = app?.updatecheck?.["@codebase"];
+            if (!crx_url)
+                throw new Error(
+                    app?.updatecheck?.["@status"] || "no download offered"
+                );
+            return {
+                crx_url: crx_url,
+                version: app.updatecheck["@version"],
+                is_webstore: is_webstore,
+            };
+        });
 }
 
 function checkForUpdates(

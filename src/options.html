@@ -48,6 +48,14 @@
                     >
                 </label>
             </div>
+            <div id="manual_update">
+                <input
+                    type="button"
+                    value="__MSG_options_checkNowButton__"
+                    id="check_updates_button"
+                />
+                <span id="check_updates_status" class="status"></span>
+            </div>
             <h2 data-localize="__MSG_options_curatedHeading__">
                 Recommended Extensions
             </h2>
@@ -63,6 +71,7 @@
                     value="__MSG_options_curatedInstallAllButton__"
                     id="curated_install_all_button"
                 />
+                <span id="curated_status" class="status"></span>
             </div>
             <h2 data-localize="__MSG_options_ignoredExtensionsHeading__">
                 Ignored Extensions
