@@ -15,6 +15,8 @@ env:
   UPSTREAM_REPO: https://github.com/NeverDecaf/chromium-web-store.git
   UPSTREAM_BRANCH: master
   CRX_NAME: Chromium.Web.Store.crx
+  # the upstream remote added during sync makes gh guess the wrong repo
+  GH_REPO: ${{ github.repository }}
 
 permissions:
   contents: write
