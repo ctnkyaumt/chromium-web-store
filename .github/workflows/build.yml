@@ -1,0 +1,72 @@
+name: Build CRX
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - "src/**"
+      - ".github/scripts/**"
+      - ".github/workflows/build.yml"
+  pull_request:
+    paths:
+      - "src/**"
+      - ".github/scripts/**"
+      - ".github/workflows/build.yml"
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install cryptography
+
+      - name: Write signing key
+        env:
+          CRX_PRIVATE_KEY: ${{ secrets.CRX_PRIVATE_KEY }}
+        run: |
+          if [ -z "$CRX_PRIVATE_KEY" ]; then
+            echo "::error::Secret CRX_PRIVATE_KEY is not set. Generate one with:"
+            echo "::error::  openssl genrsa 2048 > key.pem"
+            exit 1
+          fi
+          printf '%s\n' "$CRX_PRIVATE_KEY" > key.pem
+
+      - name: Pack CRX
+        id: pack
+        run: |
+          python .github/scripts/crx_tools.py pack \
+            --src src \
+            --output "dist/Chromium.Web.Store.crx" \
+            --key key.pem \
+            --update-url "https://raw.githubusercontent.com/${{ github.repository }}/master/updates.xml"
+
+      - name: Remove signing key
+        if: always()
+        run: rm -f key.pem
+
+      # actions/upload-artifact always wraps its payload in a zip, so upload the
+      # crx on its own to keep the download a single unwrapped file.
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Chromium.Web.Store.crx
+          path: dist/Chromium.Web.Store.crx
+          if-no-files-found: error
+          compression-level: 0
+
+      - name: Summary
+        run: |
+          {
+            echo "### CRX built"
+            echo ""
+            echo "| | |"
+            echo "|---|---|"
+            echo "| Extension ID | \`${{ steps.pack.outputs.crx_id }}\` |"
+            echo "| Version | \`${{ steps.pack.outputs.version }}\` |"
+          } >> "$GITHUB_STEP_SUMMARY"

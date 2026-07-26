@@ -1,0 +1,136 @@
+name: Release
+
+on:
+  schedule:
+    # 03:00 UTC on the 1st of Jan / Apr / Jul / Oct
+    - cron: "0 3 1 */3 *"
+  workflow_dispatch:
+    inputs:
+      sync_upstream:
+        description: "Merge new commits from upstream before releasing"
+        type: boolean
+        default: true
+
+env:
+  UPSTREAM_REPO: https://github.com/NeverDecaf/chromium-web-store.git
+  UPSTREAM_BRANCH: master
+  CRX_NAME: Chromium.Web.Store.crx
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: master
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install cryptography
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      # A plain merge never discards our side: git only stops on hunks both
+      # branches touched. On conflict we abort and hand it to a PR rather than
+      # resolving in favour of either side.
+      - name: Merge upstream
+        id: sync
+        if: github.event_name == 'schedule' || inputs.sync_upstream
+        run: |
+          git remote add upstream "$UPSTREAM_REPO"
+          git fetch upstream "$UPSTREAM_BRANCH"
+
+          if git merge-base --is-ancestor "upstream/$UPSTREAM_BRANCH" HEAD; then
+            echo "Already contains all upstream commits."
+            echo "merged=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if git merge --no-edit --no-ff "upstream/$UPSTREAM_BRANCH"; then
+            echo "merged=true" >> "$GITHUB_OUTPUT"
+          else
+            git merge --abort
+            echo "conflict=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Open PR for conflicting upstream changes
+        if: steps.sync.outputs.conflict == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          BRANCH="sync/upstream-$(date -u +%Y%m%d)"
+          git push --force origin "refs/remotes/upstream/$UPSTREAM_BRANCH:refs/heads/$BRANCH"
+          if [ -z "$(gh pr list --head "$BRANCH" --state open --json number --jq '.[].number')" ]; then
+            gh pr create --base master --head "$BRANCH" \
+              --title "Sync upstream ($BRANCH)" \
+              --body "Automated upstream sync conflicts with this fork's changes and needs manual resolution. Fork modifications were left untouched; nothing was merged. The release was skipped."
+          fi
+          echo "::error::Upstream merge conflicts with fork changes. Resolve the PR, then re-run this workflow."
+          exit 1
+
+      - name: Write signing key
+        env:
+          CRX_PRIVATE_KEY: ${{ secrets.CRX_PRIVATE_KEY }}
+        run: |
+          if [ -z "$CRX_PRIVATE_KEY" ]; then
+            echo "::error::Secret CRX_PRIVATE_KEY is not set. Generate one with:"
+            echo "::error::  openssl genrsa 2048 > key.pem"
+            exit 1
+          fi
+          printf '%s\n' "$CRX_PRIVATE_KEY" > key.pem
+
+      - name: Bump version
+        id: bump
+        run: python .github/scripts/crx_tools.py bump --manifest src/manifest.json
+
+      - name: Read extension id
+        id: ident
+        run: python .github/scripts/crx_tools.py id --key key.pem
+
+      - name: Update updates.xml
+        run: |
+          python .github/scripts/crx_tools.py updates-xml \
+            --appid "${{ steps.ident.outputs.crx_id }}" \
+            --version "${{ steps.bump.outputs.version }}" \
+            --codebase "https://github.com/${{ github.repository }}/releases/latest/download/$CRX_NAME" \
+            --output updates.xml
+
+      - name: Commit and push
+        run: |
+          git add src/manifest.json updates.xml
+          git commit -m "release: v${{ steps.bump.outputs.version }}"
+          git push origin HEAD:master
+
+      - name: Pack CRX
+        run: |
+          python .github/scripts/crx_tools.py pack \
+            --src src \
+            --output "dist/$CRX_NAME" \
+            --key key.pem \
+            --update-url "https://raw.githubusercontent.com/${{ github.repository }}/master/updates.xml"
+
+      - name: Remove signing key
+        if: always()
+        run: rm -f key.pem
+
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "v${{ steps.bump.outputs.version }}" "dist/$CRX_NAME" \
+            --title "v${{ steps.bump.outputs.version }}" \
+            --notes "Extension ID: \`${{ steps.ident.outputs.crx_id }}\`
+          Upstream merged: \`${{ steps.sync.outputs.merged || 'false' }}\`
+
+          Download \`$CRX_NAME\` and drag it onto \`chrome://extensions\` with developer mode enabled."
