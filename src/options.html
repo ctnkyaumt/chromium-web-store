@@ -18,15 +18,17 @@
                 </label>
                 <label class="sub">
                     <span
-                        data-localize="__MSG_options_updateDelay__"
-                        data-param1="<input id='update_period_in_minutes' type='number' value='60'/>"
+                        data-localize="__MSG_options_updateDelayDays__"
+                        data-param1="<input id='update_period_in_days' type='number' min='1' step='1' value='1'/>"
                         >Check for updates every
                         <input
-                            id="update_period_in_minutes"
+                            id="update_period_in_days"
                             type="number"
-                            value="60"
+                            min="1"
+                            step="1"
+                            value="1"
                         />
-                        minutes</span
+                        days</span
                     >
                 </label>
             </div>
@@ -45,6 +47,22 @@
                         >Check for updates to non-web store extensions</span
                     >
                 </label>
+            </div>
+            <h2 data-localize="__MSG_options_curatedHeading__">
+                Recommended Extensions
+            </h2>
+            <div id="curated_extensions"></div>
+            <div id="curated_buttons">
+                <input
+                    type="button"
+                    value="__MSG_options_curatedInstallSelectedButton__"
+                    id="curated_install_button"
+                />
+                <input
+                    type="button"
+                    value="__MSG_options_curatedInstallAllButton__"
+                    id="curated_install_all_button"
+                />
             </div>
             <h2 data-localize="__MSG_options_ignoredExtensionsHeading__">
                 Ignored Extensions

@@ -2,15 +2,54 @@ const chromeVersion = /Chrome\/([0-9.]+)/.exec(navigator.userAgent)[1];
 const store_extensions = new Map();
 const googleUpdateUrl = "https://clients2.google.com/service/update2/crx";
 const WEBSTORE = { chrome: 0, edge: 1, opera: 2, chromenew: 3 };
+const MINUTES_PER_DAY = 1440;
 const DEFAULT_MANAGEMENT_OPTIONS = {
     auto_update: true,
     check_store_apps: true,
     check_external_apps: true,
-    update_period_in_minutes: 60,
+    update_period_in_minutes: MINUTES_PER_DAY,
     removed_extensions: {},
     manually_install: false,
     webstore_integration: true,
 };
+// Curated extensions offered on the options page. Entries without an updateUrl
+// are resolved through the Chrome Web Store.
+const CURATED_EXTENSIONS = [
+    {
+        name: "uBlock Origin development build",
+        id: "cgbcahbpdhpcegmbfconppldiemgcoii",
+    },
+    {
+        name: "Linguist - web page translator",
+        id: "gbefmodhlophhakmoecijeppjblibmie",
+    },
+    {
+        // Official CWS listing. The self-hosted/XPI repack (id
+        // jcmpbfcjbijkcleamheapcibgjmihakj) ships a placeholder update_url of
+        // https://example.com/updates.xml and can never auto-update.
+        name: "Sahibinden Fiyat Geçmişi",
+        id: "eilpnlhignocnlfognmnogdjdcpnolbd",
+    },
+    { name: "Violentmonkey", id: "jinjaccalgkegednnccohejagnlnfdag" },
+    { name: "Recent Bookmarks List", id: "koppchkdjdakjkdmofpeoccdkkoojanc" },
+    {
+        name: "Bypass Paywalls Clean",
+        id: "lkbebcjgcmobigpeffafkodonchffocl",
+        updateUrl:
+            "https://gitflic.ru/project/magnolia1234/bpc_updates/blob/raw?file=updates.xml",
+    },
+    {
+        name: "SponsorBlock for YouTube - Skip Sponsorships",
+        id: "mnjggcdmjocbbbhaepdhchncahnbgone",
+    },
+    { name: "aktroll blocker", id: "nkplcgipdoceiofhcjcpfnkkpljnnonm" },
+    {
+        name: "Chromium Web Store",
+        id: "ocaahdebbfolfmndjeplogmgcagdmblk",
+        updateUrl:
+            "https://raw.githubusercontent.com/NeverDecaf/chromium-web-store/master/updates.xml",
+    },
+];
 var fromXML;
 const UPDATE_API_LIMIT = 100; // this appears to be 179 from testing; using 100 to be safe.
 // prettier-ignore

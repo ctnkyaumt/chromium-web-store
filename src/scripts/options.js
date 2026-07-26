@@ -1,9 +1,82 @@
+// Installs a list of {name, id, updateUrl, version} entries by resolving each
+// update manifest and handing the resulting crx url to promptInstall.
+function install_extension_list(extList) {
+    if (!extList.length) return;
+    checkForUpdates(
+        function (
+            updateCheck,
+            installed_versions,
+            appid,
+            updatever,
+            is_webstore
+        ) {
+            let crx_url = updateCheck["@codebase"];
+            promptInstall(crx_url, is_webstore);
+        },
+        null,
+        null,
+        extList
+    );
+}
+
+function load_curated_extensions(installed_extensions) {
+    var listdiv = document.getElementById("curated_extensions");
+    var checkboxes = new Map();
+    CURATED_EXTENSIONS.forEach(function (ext) {
+        let is_installed = installed_extensions.includes(ext.id);
+        let div = document.createElement("div");
+        let label = document.createElement("label");
+        let input = document.createElement("input");
+        let span = document.createElement("span");
+        input.setAttribute("type", "checkbox");
+        input.setAttribute("id", "curated_" + ext.id);
+        if (is_installed) {
+            input.disabled = true;
+            label.classList.add("disabled");
+            label.setAttribute(
+                "title",
+                chrome.i18n.getMessage("options_curatedInstalledTooltip")
+            );
+        } else {
+            checkboxes.set(input, ext);
+        }
+        span.textContent = ext.name;
+        label.appendChild(input);
+        label.appendChild(span);
+        div.appendChild(label);
+        listdiv.appendChild(div);
+    });
+
+    function to_ext_entry(ext) {
+        return {
+            name: ext.name,
+            id: ext.id,
+            updateUrl: ext.updateUrl || googleUpdateUrl,
+            version: "0",
+        };
+    }
+    document.getElementById("curated_install_button").onclick = () => {
+        install_extension_list(
+            Array.from(checkboxes)
+                .filter(([input, _]) => input.checked)
+                .map(([_, ext]) => to_ext_entry(ext))
+        );
+    };
+    document.getElementById("curated_install_all_button").onclick = () => {
+        install_extension_list(
+            Array.from(checkboxes.values()).map(to_ext_entry)
+        );
+    };
+}
+
 function load_options() {
     var maindiv = document.getElementById("updatetoggle");
     var default_options = { ...DEFAULT_MANAGEMENT_OPTIONS };
-    chrome.management.getAll(function (e) {
-        e = e.filter((ex) => ex.updateUrl);
-        installed_extensions = e.map((ex) => ex.id);
+    chrome.management.getAll(function (all_extensions) {
+        // curated list needs every installed id, not just auto-updating ones
+        installed_extensions = all_extensions.map((ex) => ex.id);
+        load_curated_extensions(installed_extensions);
+        let e = all_extensions.filter((ex) => ex.updateUrl);
         e.forEach(function (ex) {
             label = document.createElement("label");
             label.setAttribute(
@@ -81,21 +154,7 @@ function load_options() {
                         version: "0",
                     });
             }
-            checkForUpdates(
-                function (
-                    updateCheck,
-                    installed_versions,
-                    appid,
-                    updatever,
-                    is_webstore
-                ) {
-                    let crx_url = updateCheck["@codebase"];
-                    promptInstall(crx_url, is_webstore);
-                },
-                null,
-                null,
-                extList
-            );
+            install_extension_list(extList);
         };
         chrome.storage.sync.get(default_options, function (stored_values) {
             stored_values["ignored_extensions"] = [];
@@ -139,6 +198,31 @@ function load_options() {
                             });
                         }
                     }
+                }
+                // the interval is stored in minutes but edited in days
+                let days_node = document.getElementById(
+                    "update_period_in_days"
+                );
+                if (days_node) {
+                    days_node.value = Math.max(
+                        1,
+                        Math.round(
+                            items.update_period_in_minutes / MINUTES_PER_DAY
+                        )
+                    );
+                    days_node.addEventListener("input", (e) => {
+                        const days = Math.max(1, parseInt(e.target.value) || 1);
+                        chrome.storage.sync.set(
+                            {
+                                update_period_in_minutes:
+                                    days * MINUTES_PER_DAY,
+                            },
+                            function () {
+                                if (chrome.runtime.lastError)
+                                    days_node.value = "1";
+                            }
+                        );
+                    });
                 }
                 document.querySelectorAll("label.sub").forEach((node) => {
                     const target_node = node;

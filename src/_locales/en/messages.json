@@ -57,6 +57,31 @@
             }
         }
     },
+    "options_updateDelayDays": {
+        "message": "Check for updates every $delayInDays$ days",
+        "description": "delayInDays will be a field that can be edited by the user",
+        "placeholders": {
+            "delayInDays": {
+                "content": "$1"
+            }
+        }
+    },
+    "options_curatedHeading": {
+        "message": "Recommended extensions",
+        "description": "Heading for the list of preselected extensions that can be installed."
+    },
+    "options_curatedInstallSelectedButton": {
+        "message": "Install Selected",
+        "description": "Installs only the ticked extensions."
+    },
+    "options_curatedInstallAllButton": {
+        "message": "Install All",
+        "description": "Installs every extension in the recommended list that is not installed yet."
+    },
+    "options_curatedInstalledTooltip": {
+        "message": "Already installed",
+        "description": "Shown when hovering an extension that is already installed."
+    },
     "options_advanced": {
         "message": "Advanced",
         "description": ""
