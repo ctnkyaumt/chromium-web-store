@@ -24,14 +24,17 @@ const CURATED_EXTENSIONS = [
         id: "gbefmodhlophhakmoecijeppjblibmie",
     },
     {
-        // No installable source exists. The XPI repack (id
-        // jcmpbfcjbijkcleamheapcibgjmihakj) ships a placeholder update_url of
-        // https://example.com/updates.xml, and this CWS listing is unpublished:
-        // the update check answers `noupdate` with no codebase, so the store
-        // will not serve a crx for it.
+        // Self-hosted from extra/ in this repo. Neither upstream source works:
+        // the XPI repack ships a placeholder update_url of
+        // https://example.com/updates.xml, and the CWS listing
+        // (eilpnlhignocnlfognmnogdjdcpnolbd) is unpublished and answers
+        // `noupdate` with no codebase. The copy in extra/dist is re-signed with
+        // our own key and points at an update manifest we control, so replacing
+        // extra/sah.crx republishes it and clients pick the new version up.
         name: "Sahibinden Fiyat Geçmişi",
-        id: "eilpnlhignocnlfognmnogdjdcpnolbd",
-        unavailable: true,
+        id: "ngaolepohofcjgmbpebiffdmobcnbhdf",
+        updateUrl:
+            "https://raw.githubusercontent.com/ctnkyaumt/chromium-web-store/master/extra/dist/sah.updates.xml",
     },
     { name: "Violentmonkey", id: "jinjaccalgkegednnccohejagnlnfdag" },
     { name: "Recent Bookmarks List", id: "koppchkdjdakjkdmofpeoccdkkoojanc" },

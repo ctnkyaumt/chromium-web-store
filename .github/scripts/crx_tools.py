@@ -14,6 +14,7 @@ Subcommands:
 import argparse
 import base64
 import hashlib
+import io
 import json
 import os
 import shutil
@@ -106,16 +107,58 @@ def sign_crx(zip_bytes, private_key):
     )
 
 
-def patch_manifest(manifest_path, der, update_url):
+def patch_manifest(manifest_path, der, update_url, version=None):
     """Pin the packed extension to our own key so the crx installs and updates."""
     with open(manifest_path, "r", encoding="utf-8") as f:
         manifest = json.load(f)
     manifest["key"] = base64.b64encode(der).decode("ascii")
     if update_url:
         manifest["update_url"] = update_url
+    if version:
+        manifest["version"] = version
     with open(manifest_path, "w", encoding="utf-8") as f:
         json.dump(manifest, f, indent=4, ensure_ascii=False)
     return manifest["version"]
+
+
+def read_crx(raw):
+    """Return (zip_bytes, manifest) from CRX2 or CRX3 bytes."""
+    if raw[:4] != CRX_MAGIC:
+        raise SystemExit("not a crx file (bad magic)")
+    version = struct.unpack("<I", raw[4:8])[0]
+    if version == 3:
+        header_len = struct.unpack("<I", raw[8:12])[0]
+        zip_bytes = raw[12 + header_len :]
+    elif version == 2:
+        key_len, sig_len = struct.unpack("<II", raw[8:16])
+        zip_bytes = raw[16 + key_len + sig_len :]
+    else:
+        raise SystemExit("unsupported crx version {}".format(version))
+    with zipfile.ZipFile(io.BytesIO(zip_bytes)) as z:
+        manifest = json.loads(z.read("manifest.json").decode("utf-8"))
+    return zip_bytes, manifest
+
+
+def bump_last(version):
+    parts = [int(p) for p in version.split(".")]
+    while len(parts) < 4:
+        parts.append(0)
+    parts[3] += 1
+    return ".".join(str(p) for p in parts[:4])
+
+
+def resolve_published_version(state, digest, source_version):
+    """Decide the version to publish for a dropped-in crx.
+
+    The version inside the crx manifest is the primary signal. When the bytes
+    change but that version does not -- a rebuild, or a replacement that forgot
+    to bump -- the last component is incremented so clients still see an update.
+    """
+    if state.get("sha256") == digest:
+        return state.get("version", source_version), "unchanged"
+    if state.get("source_version") != source_version:
+        return source_version, "new source version"
+    return bump_last(state.get("version", source_version)), "same version, new bytes"
 
 
 def cmd_pack(args):
@@ -139,6 +182,66 @@ def cmd_pack(args):
     with open(args.output, "wb") as f:
         f.write(crx)
     emit(crx_id=extension_id(der), version=version, crx_path=args.output)
+
+
+def cmd_repack(args):
+    """Re-sign a third party crx so it points at an update manifest we control."""
+    private_key = load_private_key(args.key)
+    der = public_key_der(private_key)
+
+    with open(args.input, "rb") as f:
+        raw = f.read()
+    digest = hashlib.sha256(raw).hexdigest()
+    zip_bytes, manifest = read_crx(raw)
+    source_version = manifest["version"]
+
+    state = {}
+    if args.state and os.path.exists(args.state):
+        with open(args.state, "r", encoding="utf-8") as f:
+            state = json.load(f)
+    version, reason = resolve_published_version(state, digest, source_version)
+
+    workdir = tempfile.mkdtemp(prefix="crx-repack-")
+    try:
+        staged = os.path.join(workdir, "src")
+        with zipfile.ZipFile(io.BytesIO(zip_bytes)) as z:
+            z.extractall(staged)
+        patch_manifest(
+            os.path.join(staged, "manifest.json"), der, args.update_url, version
+        )
+        repacked_zip = os.path.join(workdir, "ext.zip")
+        build_zip(staged, repacked_zip)
+        with open(repacked_zip, "rb") as f:
+            crx = sign_crx(f.read(), private_key)
+    finally:
+        shutil.rmtree(workdir, ignore_errors=True)
+
+    os.makedirs(os.path.dirname(os.path.abspath(args.output)), exist_ok=True)
+    with open(args.output, "wb") as f:
+        f.write(crx)
+
+    if args.state:
+        os.makedirs(os.path.dirname(os.path.abspath(args.state)), exist_ok=True)
+        with open(args.state, "w", encoding="utf-8") as f:
+            json.dump(
+                {
+                    "name": manifest.get("name", ""),
+                    "sha256": digest,
+                    "source_version": source_version,
+                    "version": version,
+                },
+                f,
+                indent=4,
+                ensure_ascii=False,
+            )
+            f.write("\n")
+
+    emit(
+        crx_id=extension_id(der),
+        version=version,
+        source_version=source_version,
+        reason=reason,
+    )
 
 
 def cmd_id(args):
@@ -195,6 +298,14 @@ def main():
     p.add_argument("--key", required=True, help="RSA private key in PEM format")
     p.add_argument("--update-url", help="overrides manifest.json update_url")
     p.set_defaults(func=cmd_pack)
+
+    p = sub.add_parser("repack", help="re-sign an existing crx under our key")
+    p.add_argument("--input", required=True, help="source .crx to re-sign")
+    p.add_argument("--output", required=True)
+    p.add_argument("--key", required=True, help="RSA private key in PEM format")
+    p.add_argument("--update-url", required=True)
+    p.add_argument("--state", help="json file tracking the last published build")
+    p.set_defaults(func=cmd_repack)
 
     p = sub.add_parser("id", help="print the extension id for a key")
     p.add_argument("--key", required=True)

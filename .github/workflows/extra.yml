@@ -1,0 +1,90 @@
+name: Publish extra CRX
+
+# Republishes the self-hosted extensions in extra/ whenever one of the source
+# crx files is replaced. Only extra/*.crx triggers this; the generated files
+# land in extra/dist/ so the commit made here cannot retrigger the workflow.
+on:
+  push:
+    branches: [master]
+    paths:
+      - "extra/*.crx"
+      - ".github/scripts/crx_tools.py"
+      - ".github/workflows/extra.yml"
+  workflow_dispatch:
+
+env:
+  GH_REPO: ${{ github.repository }}
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: master
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install cryptography
+
+      - name: Write signing key
+        env:
+          EXTRA_CRX_KEY: ${{ secrets.EXTRA_CRX_KEY }}
+        run: |
+          if [ -z "$EXTRA_CRX_KEY" ]; then
+            echo "::error::Secret EXTRA_CRX_KEY is not set. Generate one with:"
+            echo "::error::  openssl genrsa 2048 > extra_key.pem"
+            exit 1
+          fi
+          printf '%s\n' "$EXTRA_CRX_KEY" > extra_key.pem
+
+      - name: Repack and publish
+        run: |
+          RAW="https://raw.githubusercontent.com/${{ github.repository }}/master/extra/dist"
+          # the extension id is derived from the signing key, so two crx files
+          # signed with EXTRA_CRX_KEY would collide on the same id
+          if [ "$(ls -1 extra/*.crx | wc -l)" -gt 1 ]; then
+            echo "::error::extra/ holds more than one crx. Each needs its own signing key, otherwise they share an extension id and overwrite each other."
+            exit 1
+          fi
+          CRX_ID="$(python .github/scripts/crx_tools.py id --key extra_key.pem | cut -d= -f2)"
+          for src in extra/*.crx; do
+            name="$(basename "$src" .crx)"
+            echo "::group::$name"
+            python .github/scripts/crx_tools.py repack \
+              --input "$src" \
+              --output "extra/dist/$name.crx" \
+              --key extra_key.pem \
+              --update-url "$RAW/$name.updates.xml" \
+              --state "extra/dist/$name.state.json"
+            VERSION="$(python -c 'import json,sys; print(json.load(open(sys.argv[1]))["version"])' "extra/dist/$name.state.json")"
+            python .github/scripts/crx_tools.py updates-xml \
+              --appid "$CRX_ID" \
+              --version "$VERSION" \
+              --codebase "$RAW/$name.crx" \
+              --output "extra/dist/$name.updates.xml"
+            echo "- **$name** -> id \`$CRX_ID\`, version \`$VERSION\`" >> "$GITHUB_STEP_SUMMARY"
+            echo "::endgroup::"
+          done
+
+      - name: Remove signing key
+        if: always()
+        run: rm -f extra_key.pem
+
+      - name: Commit if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add extra/dist
+          if git diff --cached --quiet; then
+            echo "Nothing changed."
+            exit 0
+          fi
+          git commit -m "extra: republish self-hosted crx"
+          git push origin HEAD:master
