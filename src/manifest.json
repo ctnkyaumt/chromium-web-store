@@ -4,7 +4,7 @@
     "name": "__MSG_extension_Name__",
     "description": "__MSG_extension_Description__",
     "default_locale": "en",
-    "version": "1.5.5.3",
+    "version": "1.5.5.4",
     "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAqF/d41Q7agjkUzYq8ZGbQr8XW8mmEIMXOnR1uCTnYLL+Dm9Z+LO50xZukOISNy6zFxpI8ts/OGLsm+I2x9+UprUU4/EVdmxuwegFE6NBoEhHoRNYY0gbXZkaU8YY/XwzjVY/k18DDhl5NYPEnF6uq4Oyidg+xtd3W4+iGYczuOLER1Tp5y614zOTphcvFYhvUkCijQ6HT1TtRq/34SlFoRQqo4SFiLriK451xWIcfwiMLIekWrdoQa1v8dqIlMA3r6CKc0QykJpSYbiyormWiZ0hl2HLpkZ85mD9V0eDQ5RCtb6vkybK7INcq4yKQV4YkXhr9NpX9U4re4dlFQjEJQIDAQAB",
     "permissions": [
         "management",
@@ -13,8 +13,12 @@
         "contextMenus",
         "downloads"
     ],
-    "host_permissions": ["https://clients2.google.com/service/*"],
-    "optional_host_permissions": ["<all_urls>"],
+    "host_permissions": [
+        "https://clients2.google.com/service/*"
+    ],
+    "optional_host_permissions": [
+        "<all_urls>"
+    ],
     "action": {
         "default_icon": {
             "16": "assets/icon/icon_16.png",
@@ -31,7 +35,10 @@
                 "https://addons.opera.com/*extensions/details/*",
                 "https://microsoftedge.microsoft.com/addons/*"
             ],
-            "js": ["scripts/util.js", "scripts/inject.js"],
+            "js": [
+                "scripts/util.js",
+                "scripts/inject.js"
+            ],
             "run_at": "document_start"
         }
     ],
@@ -56,11 +63,17 @@
     },
     "web_accessible_resources": [
         {
-            "resources": ["scripts/chromeApi.js"],
-            "matches": ["https://chromewebstore.google.com/*"]
+            "resources": [
+                "scripts/chromeApi.js"
+            ],
+            "matches": [
+                "https://chromewebstore.google.com/*"
+            ]
         }
     ],
     "externally_connectable": {
-        "matches": ["https://chromewebstore.google.com/*"]
+        "matches": [
+            "https://chromewebstore.google.com/*"
+        ]
     }
 }
