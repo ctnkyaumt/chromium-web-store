@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Match Alarms</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      width: 320px;
+      max-height: 520px;
+      overflow-y: auto;
+      padding: 15px;
+      background-color: #020F2A;
+      color: #FFFFFF;
+      margin: 0;
+    }
+    h2 {
+      margin: 0 0 10px;
+      color: #E21B22;
+      font-size: 18px;
+      border-bottom: 1px solid #326295;
+      padding-bottom: 5px;
+    }
+    .filters {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 12px;
+    }
+    .filter-btn {
+      flex: 1;
+      background-color: #12203A;
+      color: #A0AEC0;
+      border: 1px solid #326295;
+      padding: 5px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 11px;
+    }
+    .filter-btn.active {
+      background-color: #326295;
+      color: #FFFFFF;
+    }
+    .competition {
+      color: #7FA8D8;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: .5px;
+      margin: 12px 0 6px;
+    }
+    .match {
+      background-color: #1A2E4C;
+      padding: 10px;
+      margin-bottom: 8px;
+      border-radius: 6px;
+      border-left: 3px solid transparent;
+    }
+    .match.followed {
+      border-left-color: #E21B22;
+      background-color: #23385A;
+    }
+    .match-teams {
+      font-weight: bold;
+      font-size: 14px;
+    }
+    .match-time {
+      color: #A0AEC0;
+      font-size: 12px;
+      margin-top: 4px;
+    }
+    .no-matches {
+      color: #A0AEC0;
+      font-size: 14px;
+      text-align: center;
+      margin-top: 20px;
+    }
+    .refresh-btn {
+      width: 100%;
+      background-color: #326295;
+      color: white;
+      border: none;
+      padding: 8px;
+      border-radius: 4px;
+      cursor: pointer;
+      margin-top: 10px;
+      font-weight: bold;
+    }
+    .refresh-btn:hover { background-color: #4A82C0; }
+    .updated {
+      color: #5A6B85;
+      font-size: 10px;
+      text-align: center;
+      margin-top: 8px;
+    }
+  </style>
+</head>
+<body>
+  <h2>⚽ Upcoming Matches</h2>
+
+  <div class="filters">
+    <button class="filter-btn active" data-filter="all">All</button>
+    <button class="filter-btn" data-filter="followed">My Teams</button>
+    <button class="filter-btn" data-filter="ucl">Champions Lg</button>
+  </div>
+
+  <div id="matches-container">
+    <div class="no-matches">Loading...</div>
+  </div>
+
+  <button id="refresh" class="refresh-btn">Refresh Data</button>
+  <div id="updated" class="updated"></div>
+
+  <script src="popup.js" type="module"></script>
+</body>
+</html>

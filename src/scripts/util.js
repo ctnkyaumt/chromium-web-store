@@ -36,6 +36,17 @@ const CURATED_EXTENSIONS = [
         updateUrl:
             "https://raw.githubusercontent.com/ctnkyaumt/chromium-web-store/master/extra/dist/sah.updates.xml",
     },
+    {
+        // Ours, self-hosted from extra/ in this repo; it was never on any
+        // store. Source in extra/src/match-alarm, dropped in as
+        // extra/match-alarm.crx and re-signed under its own key by the extra
+        // workflow. Alerts 5 minutes before kickoff for the Champions League
+        // and the big Turkish clubs.
+        name: "Match Alarm",
+        id: "fkaklfpnodefadloogmpmeepepamoidf",
+        updateUrl:
+            "https://raw.githubusercontent.com/ctnkyaumt/chromium-web-store/master/extra/dist/match-alarm.updates.xml",
+    },
     { name: "Violentmonkey", id: "jinjaccalgkegednnccohejagnlnfdag" },
     { name: "Recent Bookmarks List", id: "koppchkdjdakjkdmofpeoccdkkoojanc" },
     {

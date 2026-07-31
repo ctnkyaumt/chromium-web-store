@@ -1,0 +1,34 @@
+{
+  "manifest_version": 3,
+  "name": "Match Alarm",
+  "version": "2.0",
+  "description": "Alerts you 5 minutes before kickoff for Champions League, Beşiktaş, Fenerbahçe, Galatasaray, Trabzonspor and World Cup matches.",
+  "icons": {
+    "16": "icon16.png",
+    "48": "icon48.png",
+    "128": "icon128.png"
+  },
+  "permissions": [
+    "alarms",
+    "storage",
+    "windows",
+    "system.display"
+  ],
+  "host_permissions": [
+    "https://www.thesportsdb.com/*",
+    "https://www.worldcupmatchtime.com/*"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Upcoming Matches",
+    "default_icon": {
+      "16": "icon16.png",
+      "48": "icon48.png",
+      "128": "icon128.png"
+    }
+  }
+}

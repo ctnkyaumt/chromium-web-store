@@ -3,11 +3,16 @@ name: Publish extra CRX
 # Republishes the self-hosted extensions in extra/ whenever one of the source
 # crx files is replaced. Only extra/*.crx triggers this; the generated files
 # land in extra/dist/ so the commit made here cannot retrigger the workflow.
+#
+# Each extension needs its own signing key: the extension id derives from the
+# key, so two crx files signed with the same one would collide. extra/extensions.json
+# maps each source crx to the secret holding its key.
 on:
   push:
     branches: [master]
     paths:
       - "extra/*.crx"
+      - "extra/extensions.json"
       - ".github/scripts/crx_tools.py"
       - ".github/workflows/extra.yml"
   workflow_dispatch:
@@ -33,30 +38,35 @@ jobs:
       - name: Install dependencies
         run: pip install cryptography
 
-      - name: Write signing key
-        env:
-          EXTRA_CRX_KEY: ${{ secrets.EXTRA_CRX_KEY }}
-        run: |
-          if [ -z "$EXTRA_CRX_KEY" ]; then
-            echo "::error::Secret EXTRA_CRX_KEY is not set. Generate one with:"
-            echo "::error::  openssl genrsa 2048 > extra_key.pem"
-            exit 1
-          fi
-          printf '%s\n' "$EXTRA_CRX_KEY" > extra_key.pem
-
       - name: Repack and publish
+        env:
+          # Every key a crx in extra/ can be signed with. The loop below picks
+          # the one extra/extensions.json names for that crx.
+          EXTRA_CRX_KEY: ${{ secrets.EXTRA_CRX_KEY }}
+          EXTRA_CRX_KEY_MATCH_ALARM: ${{ secrets.EXTRA_CRX_KEY_MATCH_ALARM }}
         run: |
+          set -euo pipefail
           RAW="https://raw.githubusercontent.com/${{ github.repository }}/master/extra/dist"
-          # the extension id is derived from the signing key, so two crx files
-          # signed with EXTRA_CRX_KEY would collide on the same id
-          if [ "$(ls -1 extra/*.crx | wc -l)" -gt 1 ]; then
-            echo "::error::extra/ holds more than one crx. Each needs its own signing key, otherwise they share an extension id and overwrite each other."
-            exit 1
-          fi
-          CRX_ID="$(python .github/scripts/crx_tools.py id --key extra_key.pem | cut -d= -f2)"
+          trap 'rm -f extra_key.pem' EXIT
+
           for src in extra/*.crx; do
             name="$(basename "$src" .crx)"
             echo "::group::$name"
+
+            secret_name="$(python -c 'import json,sys; e=json.load(open("extra/extensions.json")).get(sys.argv[1]); print(e["key_secret"] if e else "")' "$name")"
+            if [ -z "$secret_name" ]; then
+              echo "::error::$src has no entry in extra/extensions.json. Add one naming the secret that holds its signing key."
+              exit 1
+            fi
+            key_pem="$(printf '%s' "${!secret_name-}")"
+            if [ -z "$key_pem" ]; then
+              echo "::error::Secret $secret_name is not set (needed by $src). Generate one with: openssl genrsa 2048"
+              echo "::error::New secrets must also be listed in the env: block of this workflow."
+              exit 1
+            fi
+            printf '%s\n' "$key_pem" > extra_key.pem
+
+            CRX_ID="$(python .github/scripts/crx_tools.py id --key extra_key.pem | cut -d= -f2)"
             python .github/scripts/crx_tools.py repack \
               --input "$src" \
               --output "extra/dist/$name.crx" \
@@ -69,13 +79,11 @@ jobs:
               --version "$VERSION" \
               --codebase "$RAW/$name.crx" \
               --output "extra/dist/$name.updates.xml"
+            rm -f extra_key.pem
+
             echo "- **$name** -> id \`$CRX_ID\`, version \`$VERSION\`" >> "$GITHUB_STEP_SUMMARY"
             echo "::endgroup::"
           done
-
-      - name: Remove signing key
-        if: always()
-        run: rm -f extra_key.pem
 
       - name: Commit if changed
         run: |

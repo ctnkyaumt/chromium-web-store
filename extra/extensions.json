@@ -1,0 +1,10 @@
+{
+    "sah": {
+        "label": "Sahibinden Fiyat Geçmişi",
+        "key_secret": "EXTRA_CRX_KEY"
+    },
+    "match-alarm": {
+        "label": "Match Alarm",
+        "key_secret": "EXTRA_CRX_KEY_MATCH_ALARM"
+    }
+}

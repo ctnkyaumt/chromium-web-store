@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Match Starting Soon!</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #020F2A;
+      color: #FFFFFF;
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      text-align: center;
+    }
+    h1 {
+      font-size: 20px;
+      color: #E21B22;
+      margin-bottom: 6px;
+    }
+    .competition {
+      font-size: 12px;
+      color: #7FA8D8;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    .teams {
+      font-size: 24px;
+      font-weight: bold;
+      margin: 12px 0;
+    }
+    .time {
+      font-size: 16px;
+      color: #A0AEC0;
+    }
+    .close-btn {
+      margin-top: 20px;
+      background-color: #FFFFFF;
+      color: #020F2A;
+      border: none;
+      padding: 8px 16px;
+      font-weight: bold;
+      cursor: pointer;
+      border-radius: 4px;
+    }
+    .close-btn:hover {
+      background-color: #E21B22;
+      color: #FFFFFF;
+    }
+  </style>
+</head>
+<body>
+  <h1 id="heading">⚽ Match Starting Soon!</h1>
+  <div class="competition" id="competition"></div>
+  <div class="teams" id="teams">Team A vs Team B</div>
+  <div class="time" id="time">Kickoff Time (GMT+3)</div>
+  <button class="close-btn" id="closeBtn">Dismiss</button>
+
+  <script src="alarm.js" type="module"></script>
+</body>
+</html>
