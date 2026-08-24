@@ -133,8 +133,15 @@ function load_options() {
         installed_extensions = all_extensions.map((ex) => ex.id);
         load_curated_extensions(installed_extensions);
         load_manual_update_check();
-        let e = all_extensions.filter((ex) => ex.updateUrl);
+        let e = all_extensions.filter(
+            (ex) =>
+                ex.updateUrl ||
+                CURATED_EXTENSIONS.some((c) => c.id == ex.id && c.updateUrl),
+        );
         e.forEach(function (ex) {
+            let uUrl =
+                ex.updateUrl ||
+                CURATED_EXTENSIONS.find((c) => c.id == ex.id)?.updateUrl;
             label = document.createElement("label");
             label.setAttribute(
                 "title",
@@ -147,9 +154,10 @@ function load_options() {
             input.setAttribute("type", "checkbox");
             input.setAttribute("id", ex.id);
             if (
+                uUrl &&
                 Array.from(store_extensions.keys()).some(
                     (x) =>
-                        x.test(ex.updateUrl) && store_extensions.get(x).ignore
+                        x.test(uUrl) && store_extensions.get(x).ignore
                 )
             ) {
                 input.checked = true;
@@ -180,14 +188,17 @@ function load_options() {
         });
         document.getElementById("import_export_list").value = e
             .map((ex) => {
+                let uUrl =
+                    ex.updateUrl ||
+                    CURATED_EXTENSIONS.find((c) => c.id == ex.id)?.updateUrl;
                 for (const [re, updaterOptions] of store_extensions) {
-                    if (re.test(ex.updateUrl)) {
+                    if (re.test(uUrl)) {
                         if (!updaterOptions.ignore)
                             return ex.name + "|" + ex.id;
                         else return ex.name;
                     }
                 }
-                return ex.name + "|" + ex.id + "|" + ex.updateUrl;
+                return ex.name + "|" + ex.id + "|" + uUrl;
             })
             .join("\r\n");
         document.getElementById("import_all_button").onclick = () => {

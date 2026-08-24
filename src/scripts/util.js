@@ -67,6 +67,11 @@ const CURATED_EXTENSIONS = [
     },
     { name: "aktroll blocker", id: "nkplcgipdoceiofhcjcpfnkkpljnnonm" },
     {
+        name: "TablissNG",
+        id: "dlaogejjiafeobgofajdlkkhjlignalk",
+        updateUrl: "https://github.com/ctnkyaumt/TablissNG/releases",
+    },
+    {
         name: "Chromium Web Store",
         id: "ocaahdebbfolfmndjeplogmgcagdmblk",
         updateUrl:
@@ -206,6 +211,54 @@ function promptInstall(
     });
 }
 
+const github_release_re =
+    /^https?:\/\/(?:api\.)?github\.com\/(?:repos\/)?([^/]+)\/([^/]+?)(?:\/releases(?:\/.*)?|\/?)?$/i;
+
+function parseGithubRepo(url) {
+    if (!url) return null;
+    let m = github_release_re.exec(url);
+    if (!m) return null;
+    return {
+        owner: m[1],
+        repo: m[2].replace(/\.git$/i, ""),
+    };
+}
+
+function resolveGithubRelease(url) {
+    let repoInfo = parseGithubRepo(url);
+    if (!repoInfo)
+        return Promise.reject(new Error("Not a GitHub releases URL"));
+    let apiUrl =
+        "https://api.github.com/repos/" +
+        repoInfo.owner +
+        "/" +
+        repoInfo.repo +
+        "/releases/latest";
+    return fetch(apiUrl)
+        .then((r) => {
+            if (r.status != 200) throw new Error("HTTP " + r.status);
+            return r.json();
+        })
+        .then((release) => {
+            let rawVersion = release.tag_name || release.name || "";
+            let versionMatch = /(?:v)?([0-9]+(?:\.[0-9]+)*)/i.exec(rawVersion);
+            let version = versionMatch
+                ? versionMatch[1]
+                : rawVersion.replace(/^v/i, "");
+            let crxAsset = (release.assets || []).find(
+                (a) => a.name && a.name.endsWith(".crx"),
+            );
+            if (!crxAsset) {
+                throw new Error("No .crx asset found in latest GitHub release");
+            }
+            return {
+                crx_url: crxAsset.browser_download_url,
+                version: version,
+                is_webstore: false,
+            };
+        });
+}
+
 // Resolves the download url for one extension. Unlike checkForUpdates this
 // queries only the extension it is given, so installing from a list never
 // pulls in updates for unrelated installed extensions.
@@ -224,6 +277,9 @@ function resolveExtensionCrx(ext) {
                 "%26uc";
             break;
         }
+    }
+    if (parseGithubRepo(queryUrl)) {
+        return resolveGithubRelease(queryUrl);
     }
     return fetch(queryUrl)
         .then((r) => {
@@ -287,10 +343,12 @@ function checkForUpdates(
                     return true;
                 }
                 e.forEach(function (ex) {
-                    if (ex.updateUrl && !settings[ex.id]) {
+                    let curated = CURATED_EXTENSIONS.find((c) => c.id == ex.id);
+                    let effectiveUpdateUrl = ex.updateUrl || curated?.updateUrl;
+                    if (effectiveUpdateUrl && !settings[ex.id]) {
                         let is_from_store = false;
                         for (const [re, updaterOptions] of store_extensions) {
-                            if (re.test(ex.updateUrl)) {
+                            if (re.test(effectiveUpdateUrl)) {
                                 is_from_store = true;
                                 updaterOptions.updateUrl =
                                     updaterOptions.updateUrl ||
@@ -310,7 +368,7 @@ function checkForUpdates(
                         }
                         if (!is_from_store && settings.check_external_apps) {
                             updateUrls.push({
-                                url: ex.updateUrl,
+                                url: effectiveUpdateUrl,
                                 name: ex.name,
                                 id: ex.id,
                             });
@@ -326,20 +384,41 @@ function checkForUpdates(
                         (x) => x.test(ext_url),
                     );
                     return new Promise((resolve, reject) => {
-                        fetch(ext_url)
-                            .then((r) => {
-                                if (r.status != 200) {
-                                    return Promise.reject();
-                                } else return r.text();
-                            })
-                            .then((txt) => {
-                                let xml = fromXML(txt);
-                                if (xml.gupdate.app["@appid"]) {
-                                    // its a single ext, put into array of size 1
-                                    xml.gupdate.app = [xml.gupdate.app];
-                                }
-                                return xml;
-                            })
+                        let fetchPromise;
+                        if (parseGithubRepo(ext_url)) {
+                            fetchPromise = resolveGithubRelease(ext_url).then(
+                                (info) => ({
+                                    gupdate: {
+                                        app: [
+                                            {
+                                                "@appid": ext_id,
+                                                updatecheck: {
+                                                    "@codebase": info.crx_url,
+                                                    "@version": info.version,
+                                                    "@status": "ok",
+                                                },
+                                            },
+                                        ],
+                                    },
+                                }),
+                            );
+                        } else {
+                            fetchPromise = fetch(ext_url)
+                                .then((r) => {
+                                    if (r.status != 200) {
+                                        return Promise.reject();
+                                    } else return r.text();
+                                })
+                                .then((txt) => {
+                                    let xml = fromXML(txt);
+                                    if (xml.gupdate.app["@appid"]) {
+                                        // its a single ext, put into array of size 1
+                                        xml.gupdate.app = [xml.gupdate.app];
+                                    }
+                                    return xml;
+                                });
+                        }
+                        fetchPromise
                             .then((data) => {
                                 let updateCount = 0;
                                 for (extinfo of data?.gupdate?.app ?? []) {
