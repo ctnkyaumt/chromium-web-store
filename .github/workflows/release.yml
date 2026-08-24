@@ -120,8 +120,10 @@ jobs:
       - name: Commit and push
         run: |
           git add src/manifest.json updates.xml
-          git commit -m "release: v${{ steps.bump.outputs.version }}"
-          git push origin HEAD:master
+          if ! git diff --cached --quiet; then
+            git commit -m "release: v${{ steps.bump.outputs.version }}"
+            git push origin HEAD:master
+          fi
 
       - name: Pack CRX
         run: |
