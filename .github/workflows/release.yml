@@ -6,6 +6,10 @@ on:
     - cron: "0 3 1 */3 *"
   workflow_dispatch:
     inputs:
+      version:
+        description: "Exact version to release (leave empty to bump 4th component)"
+        type: string
+        default: ""
       sync_upstream:
         description: "Merge new commits from upstream before releasing"
         type: boolean
@@ -94,7 +98,12 @@ jobs:
 
       - name: Bump version
         id: bump
-        run: python .github/scripts/crx_tools.py bump --manifest src/manifest.json
+        run: |
+          if [ -n "${{ inputs.version }}" ]; then
+            python .github/scripts/crx_tools.py bump --manifest src/manifest.json --version "${{ inputs.version }}"
+          else
+            python .github/scripts/crx_tools.py bump --manifest src/manifest.json
+          fi
 
       - name: Read extension id
         id: ident

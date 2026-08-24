@@ -252,12 +252,15 @@ def cmd_id(args):
 def cmd_bump(args):
     with open(args.manifest, "r", encoding="utf-8") as f:
         manifest = json.load(f)
-    parts = [int(p) for p in manifest["version"].split(".")]
-    # chrome compares at most 4 components; pad then bump the last one
-    while len(parts) < 4:
-        parts.append(0)
-    parts[3] += 1
-    old, new = manifest["version"], ".".join(str(p) for p in parts[:4])
+    if getattr(args, "version", None):
+        old, new = manifest["version"], args.version
+    else:
+        parts = [int(p) for p in manifest["version"].split(".")]
+        # chrome compares at most 4 components; pad then bump the last one
+        while len(parts) < 4:
+            parts.append(0)
+        parts[3] += 1
+        old, new = manifest["version"], ".".join(str(p) for p in parts[:4])
     manifest["version"] = new
     with open(args.manifest, "w", encoding="utf-8") as f:
         json.dump(manifest, f, indent=4, ensure_ascii=False)
@@ -313,6 +316,7 @@ def main():
 
     p = sub.add_parser("bump", help="bump the 4th version component")
     p.add_argument("--manifest", default="src/manifest.json")
+    p.add_argument("--version", help="set explicit version instead of bumping")
     p.set_defaults(func=cmd_bump)
 
     p = sub.add_parser("updates-xml", help="write the omaha update manifest")
