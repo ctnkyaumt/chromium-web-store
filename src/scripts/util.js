@@ -47,6 +47,12 @@ const CURATED_EXTENSIONS = [
         updateUrl:
             "https://raw.githubusercontent.com/ctnkyaumt/chromium-web-store/master/extra/dist/match-alarm.updates.xml",
     },
+    {
+        name: "Shake Timer",
+        id: "jabhkbpnjecieklhknfckjnfhiolhjlf",
+        updateUrl:
+            "https://raw.githubusercontent.com/ctnkyaumt/chromium-web-store/master/extra/dist/timer_ext.updates.xml",
+    },
     { name: "Violentmonkey", id: "jinjaccalgkegednnccohejagnlnfdag" },
     { name: "Recent Bookmarks List", id: "koppchkdjdakjkdmofpeoccdkkoojanc" },
     {
