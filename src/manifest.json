@@ -16,7 +16,8 @@
     "host_permissions": [
         "https://clients2.google.com/service/*",
         "https://api.github.com/*",
-        "https://github.com/*"
+        "https://github.com/*",
+        "https://gitflic.ru/*"
     ],
     "optional_host_permissions": [
         "<all_urls>"

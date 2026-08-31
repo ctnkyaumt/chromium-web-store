@@ -53,6 +53,14 @@ const CURATED_EXTENSIONS = [
         updateUrl:
             "https://raw.githubusercontent.com/ctnkyaumt/chromium-web-store/master/extra/dist/timer_ext.updates.xml",
     },
+    {
+        // Ours, with source in extra/src/canli-kur. The extra workflow signs
+        // and publishes the dropped-in CRX under this stable extension id.
+        name: "Canlı Kur & Altın Takip",
+        id: "iajliehiidnhmmgkjaghokelafbpifpl",
+        updateUrl:
+            "https://raw.githubusercontent.com/ctnkyaumt/chromium-web-store/master/extra/dist/canli-kur.updates.xml",
+    },
     { name: "Violentmonkey", id: "jinjaccalgkegednnccohejagnlnfdag" },
     { name: "Recent Bookmarks List", id: "koppchkdjdakjkdmofpeoccdkkoojanc" },
     {

@@ -45,6 +45,7 @@ jobs:
           EXTRA_CRX_KEY: ${{ secrets.EXTRA_CRX_KEY }}
           EXTRA_CRX_KEY_MATCH_ALARM: ${{ secrets.EXTRA_CRX_KEY_MATCH_ALARM }}
           EXTRA_CRX_KEY_TIMER_EXT: ${{ secrets.EXTRA_CRX_KEY_TIMER_EXT }}
+          EXTRA_CRX_KEY_CANLI_KUR: ${{ secrets.EXTRA_CRX_KEY_CANLI_KUR }}
         run: |
           set -euo pipefail
           RAW="https://raw.githubusercontent.com/${{ github.repository }}/master/extra/dist"

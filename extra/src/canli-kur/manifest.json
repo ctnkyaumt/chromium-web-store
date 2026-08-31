@@ -1,0 +1,19 @@
+{
+  "manifest_version": 3,
+  "name": "Canlı Kur & Altın Takip",
+  "description": "Döviz ve altın fiyatlarını iki bağımsız kaynaktan takip edin; kurları hızla çevirin.",
+  "version": "1.1.0",
+  "permissions": [],
+  "host_permissions": [
+    "https://finans.truncgil.com/*",
+    "https://api.genelpara.com/*"
+  ],
+  "action": {
+    "default_icon": {
+      "16": "icon.png",
+      "48": "icon.png",
+      "128": "icon.png"
+    },
+    "default_popup": "popup.html"
+  }
+}

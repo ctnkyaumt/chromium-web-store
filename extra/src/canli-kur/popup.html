@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <title>Döviz Kurları</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="doviz">Döviz</button>
+    <button class="tab-btn" data-tab="altin">Altın</button>
+    <button class="tab-btn" data-tab="cevir">Çevir</button>
+  </div>
+
+  <div id="data-status" class="data-status" aria-live="polite">Veriler yükleniyor…</div>
+
+  <div class="tab-content active" id="doviz">
+    <table>
+      <thead>
+        <tr>
+          <th></th>
+          <th>Alış</th>
+          <th>Satış</th>
+          <th>Değişim</th>
+        </tr>
+      </thead>
+      <tbody id="doviz-table"></tbody>
+    </table>
+  </div>
+
+  <div class="tab-content" id="altin">
+    <table>
+      <thead>
+        <tr>
+          <th></th>
+          <th>Alış</th>
+          <th>Satış</th>
+          <th>Değişim</th>
+        </tr>
+      </thead>
+      <tbody id="altin-table"></tbody>
+    </table>
+  </div>
+
+  <div class="tab-content" id="cevir">
+    <div class="converter">
+      <input type="text" id="amount1" value="1" />
+      <select id="currency1"></select>
+      <div class="equals">=</div>
+      <input type="text" id="amount2" value="" />
+      <select id="currency2"></select>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

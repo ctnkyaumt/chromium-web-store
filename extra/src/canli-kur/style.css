@@ -1,0 +1,91 @@
+body {
+  font-family: Arial, sans-serif;
+  font-size: 14px;
+  margin: 10px;
+  min-width: 420px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th, td {
+  padding: 4px;
+}
+td {
+  text-align: center;
+}
+
+/* space between the name column and the Alış column */
+td:first-child {
+  padding-right: 12px;
+}
+
+/* Tabs */
+.tabs {
+  display: flex;
+  margin-bottom: 6px;
+}
+.tab-btn {
+  flex: 1;
+  border: none;
+  background: #f1f1f1;
+  padding: 8px;
+  cursor: pointer;
+  font-weight: bold;
+}
+.tab-btn.active {
+  background: #4CAF50;
+  color: white;
+}
+
+.tab-content {
+  display: none;
+}
+.tab-content.active {
+  display: block;
+}
+
+.data-status {
+  min-height: 16px;
+  margin-bottom: 8px;
+  color: #555;
+  font-size: 12px;
+}
+.data-status.warning {
+  color: #8a5a00;
+}
+.data-status.error {
+  color: #b00020;
+}
+tr.unavailable {
+  color: #888;
+}
+
+/* Converter */
+.converter {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) max-content 28px minmax(0, 1fr) max-content;
+  align-items: center;
+  column-gap: 8px;
+  font-size: 16px;
+}
+.converter input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 8px 10px;
+  text-align: left;
+}
+.converter select {
+  width: auto;
+  box-sizing: border-box;
+  padding: 4px 8px;
+  white-space: nowrap;
+  max-width: 100px;
+}
+.equals {
+  text-align: center;
+  font-weight: bold;
+  font-size: 18px;
+}

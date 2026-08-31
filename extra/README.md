@@ -49,3 +49,6 @@ yields a new id, which clients see as a different extension.
 - `match-alarm` — ours. Source in `extra/src/match-alarm/`. Note the workflow
   repacks `match-alarm.crx`; it does not build from that directory, so rebuild
   with `crx_tools.py pack --src extra/src/match-alarm` when the source changes.
+- `canli-kur` — ours. Source in `extra/src/canli-kur/`; Trunçgil is the primary
+  price source and GenelPara fills missing values or takes over on failure.
+  Rebuild `extra/canli-kur.crx` from that directory before publishing changes.

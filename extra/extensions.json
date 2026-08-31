@@ -10,5 +10,9 @@
     "timer_ext": {
         "label": "Shake Timer",
         "key_secret": "EXTRA_CRX_KEY_TIMER_EXT"
+    },
+    "canli-kur": {
+        "label": "Canlı Kur & Altın Takip",
+        "key_secret": "EXTRA_CRX_KEY_CANLI_KUR"
     }
 }
