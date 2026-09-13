@@ -17,7 +17,9 @@ const DEFAULT_MANAGEMENT_OPTIONS = {
 const CURATED_EXTENSIONS = [
     {
         name: "uBlock Origin development build",
-        id: "cgbcahbpdhpcegmbfconppldiemgcoii",
+        id: "pgpmlkeoakldbjkgjkloibgcdhjacehi",
+        aliasIds: ["cgbcahbpdhpcegmbfconppldiemgcoii"],
+        updateUrl: "https://github.com/gorhill/uBlock/releases",
     },
     {
         name: "Linguist - web page translator",
@@ -126,15 +128,28 @@ WEBSTORE_MAP.set(is_ews, WEBSTORE.edge);
 WEBSTORE_MAP.set(is_ows, WEBSTORE.opera);
 WEBSTORE_MAP.set(is_ncws, WEBSTORE.chromenew);
 
+function parseVersion(v) {
+    if (!v) return [];
+    v = ("" + v).trim().replace(/^version\s*/i, "").replace(/^v/i, "");
+    v = v.replace(
+        /([0-9])[-._]?(?:b|rc|beta|alpha|pre)(?:[-._]?([0-9]+))?/i,
+        "$1.$2"
+    );
+    return v
+        .split(/[^0-9]+/)
+        .filter((x) => x.length > 0)
+        .map((x) => parseInt(x, 10));
+}
+
 function version_is_newer(current, available) {
-    let current_subvs = current.split(".");
-    let available_subvs = available.split(".");
-    for (let i = 0; i < 4; i++) {
-        let ver_diff =
-            (parseInt(available_subvs[i]) || 0) -
-            (parseInt(current_subvs[i]) || 0);
-        if (ver_diff > 0) return true;
-        else if (ver_diff < 0) return false;
+    let cur = parseVersion(current);
+    let avail = parseVersion(available);
+    let len = Math.max(cur.length, avail.length);
+    for (let i = 0; i < len; i++) {
+        let c = cur[i] ?? 0;
+        let a = avail[i] ?? 0;
+        if (a > c) return true;
+        if (a < c) return false;
     }
     return false;
 }
@@ -232,6 +247,88 @@ function parseGithubRepo(url) {
     };
 }
 
+function extractGithubReleaseInfo(release) {
+    if (!release) return null;
+    let crxAsset = (release.assets || []).find(
+        (a) => a.name && a.name.endsWith(".crx"),
+    );
+    if (!crxAsset) return null;
+    let rawVersion = release.tag_name || release.name || "";
+    let version = rawVersion
+        .replace(/^version\s*/i, "")
+        .replace(/^v/i, "")
+        .trim();
+    return {
+        crx_url: crxAsset.browser_download_url,
+        version: version,
+        is_webstore: false,
+    };
+}
+
+async function scrapeGithubReleasesHtml(owner, repo) {
+    let releasesUrl = `https://github.com/${owner}/${repo}/releases`;
+    let r = await fetch(releasesUrl);
+    if (r.status != 200) throw new Error("HTTP " + r.status);
+    let html = await r.text();
+
+    let sectionRegex =
+        /<section\s+id="release-([^"]+)"([\s\S]*?)(?=<section\s+id="release-|$)/g;
+    let match;
+    let sections = [];
+    while ((match = sectionRegex.exec(html)) !== null) {
+        sections.push({
+            tag: match[1],
+            body: match[2],
+        });
+    }
+
+    for (const s of sections) {
+        let verMatch =
+            /class="[^"]*f1\s+text-bold[^"]*"[^>]*>\s*<a[^>]*>([^<]+)<\/a>/i.exec(
+                s.body,
+            ) || /href="[^"]*\/releases\/tag\/([^"]+)"/i.exec(s.body);
+        let rawVer = verMatch ? verMatch[1].trim() : s.tag;
+        let version = rawVer
+            .replace(/^version\s*/i, "")
+            .replace(/^v/i, "")
+            .trim();
+
+        let crxMatch = /href="([^"]+\.crx)"/i.exec(s.body);
+        let crx_url = null;
+        if (crxMatch) {
+            crx_url = crxMatch[1];
+            if (crx_url.startsWith("/")) {
+                crx_url = "https://github.com" + crx_url;
+            }
+        } else {
+            try {
+                let expResp = await fetch(
+                    `https://github.com/${owner}/${repo}/releases/expanded_assets/${s.tag}`,
+                );
+                if (expResp.status == 200) {
+                    let expHtml = await expResp.text();
+                    let expMatch = /href="([^"]+\.crx)"/i.exec(expHtml);
+                    if (expMatch) {
+                        crx_url = expMatch[1];
+                        if (crx_url.startsWith("/")) {
+                            crx_url = "https://github.com" + crx_url;
+                        }
+                    }
+                }
+            } catch (_) {}
+        }
+
+        if (crx_url) {
+            return {
+                crx_url: crx_url,
+                version: version,
+                is_webstore: false,
+            };
+        }
+    }
+    throw new Error("No .crx asset found in GitHub releases HTML");
+}
+
 function resolveGithubRelease(url) {
     let repoInfo = parseGithubRepo(url);
     if (!repoInfo)
@@ -241,29 +338,26 @@ function resolveGithubRelease(url) {
         repoInfo.owner +
         "/" +
         repoInfo.repo +
-        "/releases/latest";
+        "/releases?per_page=10";
     return fetch(apiUrl)
         .then((r) => {
             if (r.status != 200) throw new Error("HTTP " + r.status);
             return r.json();
         })
-        .then((release) => {
-            let rawVersion = release.tag_name || release.name || "";
-            let versionMatch = /(?:v)?([0-9]+(?:\.[0-9]+)*)/i.exec(rawVersion);
-            let version = versionMatch
-                ? versionMatch[1]
-                : rawVersion.replace(/^v/i, "");
-            let crxAsset = (release.assets || []).find(
-                (a) => a.name && a.name.endsWith(".crx"),
-            );
-            if (!crxAsset) {
-                throw new Error("No .crx asset found in latest GitHub release");
+        .then((releases) => {
+            let relList = Array.isArray(releases) ? releases : [releases];
+            for (const rel of relList) {
+                let info = extractGithubReleaseInfo(rel);
+                if (info) return info;
             }
-            return {
-                crx_url: crxAsset.browser_download_url,
-                version: version,
-                is_webstore: false,
-            };
+            throw new Error("No .crx found in GitHub API releases");
+        })
+        .catch((err) => {
+            console.warn(
+                "GitHub API release lookup failed, falling back to HTML scraping:",
+                err,
+            );
+            return scrapeGithubReleasesHtml(repoInfo.owner, repoInfo.repo);
         });
 }
 
@@ -351,7 +445,11 @@ function checkForUpdates(
                     return true;
                 }
                 e.forEach(function (ex) {
-                    let curated = CURATED_EXTENSIONS.find((c) => c.id == ex.id);
+                    let curated = CURATED_EXTENSIONS.find(
+                        (c) =>
+                            c.id == ex.id ||
+                            (c.aliasIds && c.aliasIds.includes(ex.id)),
+                    );
                     let effectiveUpdateUrl = ex.updateUrl || curated?.updateUrl;
                     if (effectiveUpdateUrl && !settings[ex.id]) {
                         let is_from_store = false;

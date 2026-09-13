@@ -39,7 +39,10 @@ function load_curated_extensions(installed_extensions) {
     var status_node = document.getElementById("curated_status");
     var checkboxes = new Map();
     CURATED_EXTENSIONS.forEach(function (ext) {
-        let is_installed = installed_extensions.includes(ext.id);
+        let is_installed =
+            installed_extensions.includes(ext.id) ||
+            (ext.aliasIds &&
+                ext.aliasIds.some((aid) => installed_extensions.includes(aid)));
         let div = document.createElement("div");
         let label = document.createElement("label");
         let input = document.createElement("input");
@@ -136,12 +139,18 @@ function load_options() {
         let e = all_extensions.filter(
             (ex) =>
                 ex.updateUrl ||
-                CURATED_EXTENSIONS.some((c) => c.id == ex.id && c.updateUrl),
+                CURATED_EXTENSIONS.some(
+                    (c) =>
+                        (c.id == ex.id || c.aliasIds?.includes(ex.id)) &&
+                        c.updateUrl,
+                ),
         );
         e.forEach(function (ex) {
             let uUrl =
                 ex.updateUrl ||
-                CURATED_EXTENSIONS.find((c) => c.id == ex.id)?.updateUrl;
+                CURATED_EXTENSIONS.find(
+                    (c) => c.id == ex.id || c.aliasIds?.includes(ex.id),
+                )?.updateUrl;
             label = document.createElement("label");
             label.setAttribute(
                 "title",
@@ -190,7 +199,9 @@ function load_options() {
             .map((ex) => {
                 let uUrl =
                     ex.updateUrl ||
-                    CURATED_EXTENSIONS.find((c) => c.id == ex.id)?.updateUrl;
+                    CURATED_EXTENSIONS.find(
+                        (c) => c.id == ex.id || c.aliasIds?.includes(ex.id),
+                    )?.updateUrl;
                 for (const [re, updaterOptions] of store_extensions) {
                     if (re.test(uUrl)) {
                         if (!updaterOptions.ignore)
